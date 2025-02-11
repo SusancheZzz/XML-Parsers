@@ -1,11 +1,16 @@
 package com.rntgroup.custom_parser.entity;
 
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Value
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class Person {
 
-    String name;
-    String groupId;
-
+    private String name;
+    private String groupId;
 }

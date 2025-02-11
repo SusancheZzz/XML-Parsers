@@ -1,10 +1,20 @@
 package com.rntgroup.custom_parser.entity;
 
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.List;
 
-@Value
+@Getter
+@AllArgsConstructor
 public class Act {
-    List<Scene> sceneList;
+    @Setter
+    private String title;
+    private final List<Scene> sceneList;
+
+    public Act() {
+        this.sceneList = new ArrayList<>();
+    }
 }
