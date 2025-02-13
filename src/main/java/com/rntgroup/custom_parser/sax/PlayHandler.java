@@ -5,14 +5,32 @@ import com.rntgroup.custom_parser.entity.Person;
 import com.rntgroup.custom_parser.entity.Play;
 import com.rntgroup.custom_parser.entity.Scene;
 import com.rntgroup.custom_parser.entity.Speech;
+import com.rntgroup.custom_parser.part_parse.PartParsable;
+import com.rntgroup.custom_parser.part_parse.SaxParserFlags;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.xml.sax.Attributes;
 import org.xml.sax.helpers.DefaultHandler;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import static com.rntgroup.custom_parser.constants.Constants.ACT;
+import static com.rntgroup.custom_parser.constants.Constants.AUTHOR;
+import static com.rntgroup.custom_parser.constants.Constants.FM;
+import static com.rntgroup.custom_parser.constants.Constants.GRPDESCR;
+import static com.rntgroup.custom_parser.constants.Constants.LINE;
+import static com.rntgroup.custom_parser.constants.Constants.P;
+import static com.rntgroup.custom_parser.constants.Constants.PERSONA;
+import static com.rntgroup.custom_parser.constants.Constants.PGROUP;
+import static com.rntgroup.custom_parser.constants.Constants.SCENE;
+import static com.rntgroup.custom_parser.constants.Constants.SPEAKER;
+import static com.rntgroup.custom_parser.constants.Constants.SPEECH;
+import static com.rntgroup.custom_parser.constants.Constants.STAGEDIR;
+import static com.rntgroup.custom_parser.constants.Constants.TITLE;
 
 @NoArgsConstructor
 class PlayHandler extends DefaultHandler {
@@ -22,17 +40,17 @@ class PlayHandler extends DefaultHandler {
     @Getter
     private final Map<String, Integer> tagCountMap = new HashMap<>();
 
+    private final SaxParserFlags saxParserFlags = new SaxParserFlags();
+
     private final StringBuilder contentText = new StringBuilder();
     private final StringBuilder annotation = new StringBuilder();
-    private boolean isTitlePlay = false;
-    private boolean isAct = false;
-    private boolean isScene = false;
-    private boolean isSpeech = false;
-    private int countPerson = 0;
     private String currentGroup = null;
-    private boolean isGroup = false;
     private String currentSpeaker = null;
     private final StringBuilder speechText = new StringBuilder();
+    private final List<String> groupPersonName = new ArrayList<>();
+
+    // Создание и инициализация мапы для стратегии
+    private final Map<String, PartParsable> parseSaxPart = new HashMap<>();
 
     @Override
     public void startElement(String uri, String localName, String qName, Attributes attributes) {
@@ -43,31 +61,29 @@ class PlayHandler extends DefaultHandler {
         // Обнуляем накопленный контент
         contentText.setLength(0);
 
+        parseSaxPart.get(qName).startParse(attributes, saxParserFlags, play);
+
         switch (qName) {
-            case "TITLE":
-                if (Objects.nonNull(attributes.getValue("AUTHOR"))) {
-                    isTitlePlay = true;
-                    play.setAuthor(attributes.getValue("AUTHOR"));
+            case TITLE:
+                if (Objects.nonNull(attributes.getValue(AUTHOR))) {
+                    saxParserFlags.setTitlePlay(true);
+                    play.setAuthor(attributes.getValue(AUTHOR));
                 }
                 break;
-            case "PERSONA":
-                if (isGroup)
-                    countPerson++;
+            case PGROUP:
+                saxParserFlags.setGroup(true);
                 break;
-            case "PGROUP":
-                isGroup = true;
-                break;
-            case "ACT":
-                isAct = true;
+            case ACT:
+                saxParserFlags.setAct(true);
                 play.getActs().add(new Act());
                 break;
-            case "SCENE":
-                isScene = true;
+            case SCENE:
+                saxParserFlags.setScene(true);
                 play.getActs().getLast().getSceneList()
                     .add(new Scene());
                 break;
-            case "SPEECH":
-                isSpeech = true;
+            case SPEECH:
+                saxParserFlags.setSpeech(true);
                 currentSpeaker = null;
                 play.getActs().getLast()
                     .getSceneList().getLast()
@@ -83,18 +99,18 @@ class PlayHandler extends DefaultHandler {
         switch (qName) {
 
             // Парсинг названий в зависимости от родительского тега
-            case "TITLE":
-                if (isTitlePlay) {
-                    isTitlePlay = false;
+            case TITLE:
+                if (saxParserFlags.isTitlePlay()) {
+                    saxParserFlags.setTitlePlay(false);
                     play.setTitle(text);
                 }
-                if (isAct) {
-                    isAct = false;
+                if (saxParserFlags.isAct()) {
+                    saxParserFlags.setAct(false);
                     play.getActs().getLast()
                         .setTitle(text);
                 }
-                if (isScene) {
-                    isScene = false;
+                if (saxParserFlags.isScene()) {
+                    saxParserFlags.setScene(false);
                     play.getActs().getLast()
                         .getSceneList().getLast()
                         .setTitle(text);
@@ -102,36 +118,39 @@ class PlayHandler extends DefaultHandler {
                 break;
 
             // Парсинг аннотации
-            case "P":
+            case P:
                 annotation.append(text).append('\n');
                 break;
-            case "FM":
+            case FM:
                 play.setAnnotation(annotation.toString());
                 break;
 
             // Парсинг персонажей
-            case "PERSONA":
-                play.getPersonList().add(new Person(text, currentGroup));
+            case PERSONA:
+                play.getPersonList().put(text, new Person(text, currentGroup));
+                if (saxParserFlags.isGroup())
+                    groupPersonName.add(text);
                 break;
-            case "GRPDESCR":
+            case GRPDESCR:
                 currentGroup = text;
                 break;
-            case "PGROUP":
-                isGroup = false;
-                for (int i = play.getPersonList().size() - countPerson; i < play.getPersonList().size(); i++)
-                    play.getPersonList().get(i).setGroupId(currentGroup);
+            case PGROUP:
+                saxParserFlags.setGroup(false);
+                for (String name : groupPersonName) {
+                    play.getPersonList().get(name).setGroupId(currentGroup);
+                }
+                groupPersonName.clear();
                 currentGroup = null;
-                countPerson = 0;
                 break;
 
-            case "ACT":
-                isAct = false;
+            case ACT:
+                saxParserFlags.setAct(false);
                 break;
-            case "SCENE":
-                isScene = false;
+            case SCENE:
+                saxParserFlags.setScene(false);
                 break;
 
-            case "SPEAKER":
+            case SPEAKER:
                 currentSpeaker = text;
                 Person person = play.findPersonByName(currentSpeaker)
                     .orElse(new Person(currentSpeaker, null));
@@ -140,7 +159,7 @@ class PlayHandler extends DefaultHandler {
                     .getSpeeches().getLast()
                     .setPerson(person);
                 break;
-            case "SPEECH":
+            case SPEECH:
                 play.getActs().getLast()
                     .getSceneList().getLast()
                     .getSpeeches().getLast()
@@ -148,15 +167,15 @@ class PlayHandler extends DefaultHandler {
 
                 currentSpeaker = null;
                 speechText.setLength(0); // Обнуляем текст последнего спича
-                isSpeech = false;
+                saxParserFlags.setSpeech(false);
                 break;
 
-            case "LINE":
+            case LINE:
                 speechText.append(text).append("\n");
                 break;
 
-            case "STAGEDIR": // Разделение двух действий -- в SPEECH и в SCENE
-                if (isSpeech) {
+            case STAGEDIR: // Разделение двух действий -- в SPEECH и в SCENE
+                if (saxParserFlags.isSpeech()) {
                     play.getActs().getLast()
                         .getSceneList().getLast()
                         .getSpeeches().getLast()

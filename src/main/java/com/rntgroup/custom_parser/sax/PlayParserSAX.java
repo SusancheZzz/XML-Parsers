@@ -58,7 +58,7 @@ public class PlayParserSAX {
                 .sorted(new TagCounterComparator())
                 .forEach( entry -> writer.println(entry.getKey() + "," + entry.getValue()));
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            throw new IllegalStateException("File not found");
         }
     }
 }

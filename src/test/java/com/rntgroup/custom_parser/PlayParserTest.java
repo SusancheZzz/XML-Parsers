@@ -99,11 +99,11 @@ public class PlayParserTest {
 
     @Test
     public void compareCountPersonWithNullGroup(){
-        long countPersonWithNullGroupDOM = playDOM.getPersonList().stream()
-            .filter(pers -> Objects.isNull(pers.getGroupId()))
+        long countPersonWithNullGroupDOM = playDOM.getPersonList().entrySet().stream()
+            .filter(pers -> Objects.isNull(pers.getValue().getGroupId()))
             .count();
-        long countPersonWithNullGroupSAX = playSAX.getPersonList().stream()
-            .filter(pers -> Objects.isNull(pers.getGroupId()))
+        long countPersonWithNullGroupSAX = playSAX.getPersonList().entrySet().stream()
+            .filter(pers -> Objects.isNull(pers.getValue().getGroupId()))
             .count();
 
         assertEquals(countPersonWithNullGroupDOM, countPersonWithNullGroupSAX);
@@ -112,11 +112,11 @@ public class PlayParserTest {
 
     @Test
     public void compareCountPersonWithGroupCourtiers(){
-        long countPersonWithGroupCourtiersDOM = playDOM.getPersonList().stream()
-            .filter(pers -> "courtiers.".equals(pers.getGroupId()))
+        long countPersonWithGroupCourtiersDOM = playDOM.getPersonList().entrySet().stream()
+            .filter(pers -> "courtiers.".equals(pers.getValue().getGroupId()))
             .count();
-        long countPersonWithGroupCourtiersSAX = playSAX.getPersonList().stream()
-            .filter(pers -> "courtiers.".equals(pers.getGroupId()))
+        long countPersonWithGroupCourtiersSAX = playSAX.getPersonList().entrySet().stream()
+            .filter(pers -> "courtiers.".equals(pers.getValue().getGroupId()))
             .count();
 
         assertEquals(countPersonWithGroupCourtiersDOM, countPersonWithGroupCourtiersSAX);

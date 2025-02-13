@@ -99,16 +99,6 @@ public class PlayParserDOM {
                 Map::putAll);
     }
 
-    private void countTags(Node node) {
-        if (node.getNodeType() == Node.ELEMENT_NODE) {
-            tagCountMap.put(node.getNodeName(), tagCountMap.getOrDefault(node.getNodeName(), 0) + 1);
-        }
-        NodeList childs = node.getChildNodes();
-        for (int i = 0; i < childs.getLength(); i++) {
-            countTags(childs.item(i));
-        }
-    }
-
     public void exportToCSV(File outputFile) {
         if (!useTagsCounter) {
             countTags(document.getDocumentElement());
@@ -124,6 +114,16 @@ public class PlayParserDOM {
         }
     }
 
+    private void countTags(Node node) {
+        if (node.getNodeType() == Node.ELEMENT_NODE) {
+            tagCountMap.put(node.getNodeName(), tagCountMap.getOrDefault(node.getNodeName(), 0) + 1);
+        }
+        NodeList childs = node.getChildNodes();
+        for (int i = 0; i < childs.getLength(); i++) {
+            countTags(childs.item(i));
+        }
+    }
+
     private void parsePersons(NodeList personNodes) {
         for (int i = 0; i < personNodes.getLength(); i++) {
             String groupId = null;
@@ -134,7 +134,7 @@ public class PlayParserDOM {
             if ("PGROUP".equals(curParentPersonNode.getNodeName())) {
                 groupId = curParentPersonNode.getElementsByTagName(GRPDESCR).item(0).getTextContent();
             }
-            play.getPersonList().add(new Person(namePerson, groupId));
+            play.getPersonList().put(namePerson, new Person(namePerson, groupId));
         }
     }
 
