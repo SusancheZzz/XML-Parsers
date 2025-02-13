@@ -23,7 +23,11 @@ public class PlayParserTest {
 
     @BeforeEach
     public void init() {
-        playParserDOM = new PlayParserDOM(inputFile);
+        try {
+            playParserDOM = new PlayParserDOM(inputFile);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         playParserSAX = new PlayParserSAX(inputFile);
         playDOM = playParserDOM.parse();
         playSAX = playParserSAX.parse();

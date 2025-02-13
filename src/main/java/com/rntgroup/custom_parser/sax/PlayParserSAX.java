@@ -1,5 +1,6 @@
 package com.rntgroup.custom_parser.sax;
 
+import com.rntgroup.custom_parser.comparator.TagCounterComparator;
 import com.rntgroup.custom_parser.entity.Play;
 
 import javax.xml.parsers.SAXParser;
@@ -35,14 +36,14 @@ public class PlayParserSAX {
         }catch(Exception ex){
             ex.printStackTrace();
         }
-        return new Play();
+        return null;
     }
 
     public Map<String, Integer> getTagsCounter(){
         if(!parseUsed)
-            throw new RuntimeException("The parse method was not called");
+            throw new IllegalStateException("The parse method was not called");
         return tagCountMap.entrySet().stream()
-            .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+            .sorted(new TagCounterComparator())
             .collect(LinkedHashMap::new,
                 (m, e) -> m.put(e.getKey(), e.getValue()),
                 Map::putAll);
@@ -50,11 +51,11 @@ public class PlayParserSAX {
 
     public void exportToCSV(File outputFile) {
         if(!parseUsed)
-            throw new RuntimeException("The parse method was not called");
+            throw new IllegalStateException("The parse method was not called");
         try (PrintWriter writer = new PrintWriter(outputFile)) {
             writer.println("word,amount");
             tagCountMap.entrySet().stream()
-                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                .sorted(new TagCounterComparator())
                 .forEach( entry -> writer.println(entry.getKey() + "," + entry.getValue()));
         } catch (FileNotFoundException e) {
             e.printStackTrace();
