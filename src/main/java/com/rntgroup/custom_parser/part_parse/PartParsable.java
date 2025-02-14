@@ -5,7 +5,9 @@ import org.xml.sax.Attributes;
 
 public interface PartParsable {
 
-    void startParse(Attributes attributes, SaxParserFlags saxParserFlags, Play play);
+    default void startParse(Attributes attributes, ParsingState parsingState, Play play){
+    }
 
-    void endParse();
+    default void endParse(ParsingState parsingState, Play play, String content){
+    }
 }

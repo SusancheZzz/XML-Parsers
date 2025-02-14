@@ -1,5 +1,6 @@
 package com.rntgroup.custom_parser.sax;
 
+import com.rntgroup.custom_parser.PlayParser;
 import com.rntgroup.custom_parser.comparator.TagCounterComparator;
 import com.rntgroup.custom_parser.entity.Play;
 
@@ -11,7 +12,9 @@ import java.io.PrintWriter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class PlayParserSAX {
+import static com.rntgroup.custom_parser.constants.Constants.FILE_NOT_FOUND;
+
+public class PlayParserSAX implements PlayParser {
 
     private Map<String, Integer> tagCountMap;
     private final File file;
@@ -21,6 +24,7 @@ public class PlayParserSAX {
         this.file = file;
     }
 
+    @Override
     public Play parse() {
         try {
             SAXParserFactory factory = SAXParserFactory.newInstance();
@@ -34,9 +38,8 @@ public class PlayParserSAX {
             return handler.getPlay();
 
         }catch(Exception ex){
-            ex.printStackTrace();
+            throw new RuntimeException(ex);
         }
-        return null;
     }
 
     public Map<String, Integer> getTagsCounter(){
@@ -49,6 +52,7 @@ public class PlayParserSAX {
                 Map::putAll);
     }
 
+    @Override
     public void exportToCSV(File outputFile) {
         if(!parseUsed)
             throw new IllegalStateException("The parse method was not called");
@@ -58,7 +62,7 @@ public class PlayParserSAX {
                 .sorted(new TagCounterComparator())
                 .forEach( entry -> writer.println(entry.getKey() + "," + entry.getValue()));
         } catch (FileNotFoundException e) {
-            throw new IllegalStateException("File not found");
+            throw new IllegalStateException(FILE_NOT_FOUND);
         }
     }
 }

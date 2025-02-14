@@ -3,200 +3,214 @@ package com.rntgroup.custom_parser;
 import com.rntgroup.custom_parser.dom.PlayParserDOM;
 import com.rntgroup.custom_parser.entity.Play;
 import com.rntgroup.custom_parser.sax.PlayParserSAX;
+import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Execution(ExecutionMode.CONCURRENT)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class PlayParserTest {
 
-    private Play playDOM;
-    private Play playSAX;
-    private PlayParserDOM playParserDOM;
-    private PlayParserSAX playParserSAX;
-    File inputFile = Path.of("src", "main", "resources", "static", "hamlet.xml").toFile();
-    File outputFile = Path.of("src", "main", "resources", "static", "countTags.csv").toFile();
+    private static final File inputFile = Path.of("src", "main", "resources", "static", "hamlet.xml").toFile();
+    private File outputFile;
+    private final File testCSV = Path.of("src", "test", "resources", "static", "testCSV").toFile();
+
+    private static final String ANNOTATION =
+        "Text placed in the public domain by Moby Lexical Tools, 1992.\n" +
+            "SGML markup by Jon Bosak, 1992-1994.\n" +
+            "XML version by Jon Bosak, 1996-1998.\n" +
+            "This work may be freely copied and distributed worldwide.\n";
+    private static final String AUTHOR = "William Shakespeare";
+    private static final String TITLE = "The Tragedy of Hamlet, Prince of Denmark";
+
+
+    public static Stream<Arguments> getParserDOM() {
+        return Stream.of(Arguments.of(new PlayParserDOM(inputFile)));
+    }
+
+    public static Stream<Arguments> getParserSAX() {
+        return Stream.of(Arguments.of(new PlayParserSAX(inputFile)));
+    }
+
+    public static Stream<Arguments> getPlaySAX() {
+        return Stream.of(Arguments.of(new PlayParserSAX(inputFile).parse()));
+    }
+
+    public static Stream<Arguments> getPlayDOM() {
+        return Stream.of(Arguments.of(new PlayParserDOM(inputFile).parse()));
+    }
 
     @BeforeEach
-    public void init() {
-        try {
-            playParserDOM = new PlayParserDOM(inputFile);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        playParserSAX = new PlayParserSAX(inputFile);
-        playDOM = playParserDOM.parse();
-        playSAX = playParserSAX.parse();
+    public void init(@TempDir Path tempDir) throws IOException {
+        outputFile = Files.createTempFile(tempDir, "countTags", ".csv").toFile();
     }
 
-    @Test
-    public void compareTitle() {
-        assertEquals(playDOM.getTitle(), playSAX.getTitle());
+    @ParameterizedTest
+    @MethodSource({"getPlayDOM", "getPlaySAX"})
+    public void compareTitle(Play play) {
+        assertEquals(TITLE, play.getTitle());
     }
 
-    @Test
-    public void compareAuthor() {
-        assertEquals(playDOM.getAuthor(), playSAX.getAuthor());
+    @ParameterizedTest
+    @MethodSource({"getPlayDOM", "getPlaySAX"})
+    public void compareAuthor(Play play) {
+        assertEquals(AUTHOR, play.getAuthor());
     }
 
-    @Test
-    public void compareAnnotation() {
-        assertEquals(playDOM.getAnnotation(), playSAX.getAnnotation());
+    @ParameterizedTest
+    @MethodSource({"getPlayDOM", "getPlaySAX"})
+    public void compareAnnotation(Play play) {
+        assertEquals(ANNOTATION, play.getAnnotation());
     }
 
-    @Test
-    public void testCountAct() {
-        assertEquals(5, playDOM.getActs().size());
-        assertEquals(5, playSAX.getActs().size());
+    @ParameterizedTest
+    @MethodSource({"getPlayDOM", "getPlaySAX"})
+    public void testCountAct(Play play) {
+        assertEquals(5, play.getActs().size());
     }
 
-    @Test
-    public void testCountPerson() {
-        assertEquals(26, playDOM.getPersonList().size());
-        assertEquals(26, playSAX.getPersonList().size());
+    @ParameterizedTest
+    @MethodSource({"getPlayDOM", "getPlaySAX"})
+    public void testCountPerson(Play play) {
+        assertEquals(26, play.getPersonList().size());
     }
 
-    @Test
-    public void compareCountUniqueWordsPerson() {
-        assertEquals(
-            playDOM.getUniqueWordsPerson("Hamlet").size(),
-            playSAX.getUniqueWordsPerson("Hamlet").size()
-        );
-        assertEquals(5193, playSAX.getUniqueWordsPerson("Hamlet").size());
+    @ParameterizedTest
+    @MethodSource({"getPlayDOM", "getPlaySAX"})
+    public void compareCountUniqueWordsPerson(Play play) {
+        assertEquals(5193, play.getUniqueWordsPerson("Hamlet").size());
     }
 
-    @Test
-    public void compareCountScene() {
-        long countSceneDOM = playDOM.getActs().stream()
-            .mapToLong(act -> act.getSceneList().size())
-            .sum();
-        long countSceneSAX = playSAX.getActs().stream()
+    @ParameterizedTest
+    @MethodSource({"getPlayDOM", "getPlaySAX"})
+    public void compareCountScene(Play play) {
+        long countScene = play.getActs().stream()
             .mapToLong(act -> act.getSceneList().size())
             .sum();
 
-        assertEquals(countSceneDOM, countSceneSAX);
-        assertEquals(20, countSceneDOM);
+        assertEquals(20, countScene);
     }
 
-    @Test
-    public void compareCountSpeeches() {
-        long countSpeechesDOM = playDOM.getActs().stream()
-            .flatMap(act -> act.getSceneList().stream())
-            .mapToLong(scene -> scene.getSpeeches().size())
-            .sum();
-        long countSpeechesSAX = playSAX.getActs().stream()
+    @ParameterizedTest
+    @MethodSource({"getPlayDOM", "getPlaySAX"})
+    public void compareCountSpeeches(Play play) {
+        long countSpeeches = play.getActs().stream()
             .flatMap(act -> act.getSceneList().stream())
             .mapToLong(scene -> scene.getSpeeches().size())
             .sum();
 
-        assertEquals(1138, countSpeechesDOM);
-        assertEquals(1138, countSpeechesSAX);
+        assertEquals(1138, countSpeeches);
     }
 
-    @Test
-    public void compareCountPersonWithNullGroup(){
-        long countPersonWithNullGroupDOM = playDOM.getPersonList().entrySet().stream()
-            .filter(pers -> Objects.isNull(pers.getValue().getGroupId()))
-            .count();
-        long countPersonWithNullGroupSAX = playSAX.getPersonList().entrySet().stream()
+    @ParameterizedTest
+    @MethodSource({"getPlayDOM", "getPlaySAX"})
+    public void compareCountPersonWithNullGroup(Play play) {
+        long countPersonWithNullGroup = play.getPersonList().entrySet().stream()
             .filter(pers -> Objects.isNull(pers.getValue().getGroupId()))
             .count();
 
-        assertEquals(countPersonWithNullGroupDOM, countPersonWithNullGroupSAX);
-        assertEquals(19, countPersonWithNullGroupDOM);
+        assertEquals(19, countPersonWithNullGroup);
     }
 
-    @Test
-    public void compareCountPersonWithGroupCourtiers(){
-        long countPersonWithGroupCourtiersDOM = playDOM.getPersonList().entrySet().stream()
-            .filter(pers -> "courtiers.".equals(pers.getValue().getGroupId()))
-            .count();
-        long countPersonWithGroupCourtiersSAX = playSAX.getPersonList().entrySet().stream()
+    @ParameterizedTest
+    @MethodSource({"getPlayDOM", "getPlaySAX"})
+    public void compareCountPersonWithGroupCourtiers(Play play) {
+        long countPersonWithGroupCourtiers = play.getPersonList().entrySet().stream()
             .filter(pers -> "courtiers.".equals(pers.getValue().getGroupId()))
             .count();
 
-        assertEquals(countPersonWithGroupCourtiersDOM, countPersonWithGroupCourtiersSAX);
-        assertEquals(5, countPersonWithGroupCourtiersDOM);
+        assertEquals(5, countPersonWithGroupCourtiers);
     }
 
-    @Test
-    public void compareCountActionsInScenes() {
-        long countActionsInScenesDOM = playDOM.getActs().stream()
-            .flatMap(act -> act.getSceneList().stream())
-            .mapToLong(scene -> scene.getActions().size())
-            .sum();
-        long countActionsInScenesSAX = playSAX.getActs().stream()
+    @ParameterizedTest
+    @MethodSource({"getPlayDOM", "getPlaySAX"})
+    public void compareCountActionsInScenes(Play play) {
+        long countActionsInScenes = play.getActs().stream()
             .flatMap(act -> act.getSceneList().stream())
             .mapToLong(scene -> scene.getActions().size())
             .sum();
 
-        assertEquals(134, countActionsInScenesDOM);
-        assertEquals(134, countActionsInScenesSAX);
+        assertEquals(134, countActionsInScenes);
     }
 
-    @Test
-    public void compareCountActionsInSpeeches() {
-        long countActionsInSpeechesDOM = playDOM.getActs().stream()
-            .flatMap(act -> act.getSceneList().stream())
-            .flatMap(scene -> scene.getSpeeches().stream())
-            .mapToLong(speech -> speech.getActions().size())
-            .sum();
-        long countActionsInSpeechesSAX = playSAX.getActs().stream()
+    @ParameterizedTest
+    @MethodSource({"getPlayDOM", "getPlaySAX"})
+    public void compareCountActionsInSpeeches(Play play) {
+        long countActionsInSpeeches = play.getActs().stream()
             .flatMap(act -> act.getSceneList().stream())
             .flatMap(scene -> scene.getSpeeches().stream())
             .mapToLong(speech -> speech.getActions().size())
             .sum();
 
-        assertEquals(109, countActionsInSpeechesDOM);
-        assertEquals(109, countActionsInSpeechesSAX);
+        assertEquals(109, countActionsInSpeeches);
     }
 
-    @Test
-    public void testCountAllActionsInPlayDOM() {
-        long actionsInSpeechesDOM = playDOM.getActs().stream()
+    @ParameterizedTest
+    @MethodSource({"getPlayDOM", "getPlaySAX"})
+    public void testCountAllActionsInPlay(Play play) {
+        long actionsInSpeeches = play.getActs().stream()
             .flatMap(act -> act.getSceneList().stream())
             .flatMap(scene -> scene.getSpeeches().stream())
             .mapToLong(speech -> speech.getActions().size())
             .sum();
-        long actionsInScenesDOM = playDOM.getActs().stream()
+        long actionsInScenes = play.getActs().stream()
             .flatMap(act -> act.getSceneList().stream())
             .mapToLong(scene -> scene.getActions().size())
             .sum();
 
-        assertEquals(243, actionsInScenesDOM + actionsInSpeechesDOM);
+        assertEquals(243, actionsInScenes + actionsInSpeeches);
     }
 
-    @Test
-    public void testCountAllActionsInPlaySAX() {
-        long actionsInSpeechesSAX = playSAX.getActs().stream()
-            .flatMap(act -> act.getSceneList().stream())
-            .flatMap(scene -> scene.getSpeeches().stream())
-            .mapToLong(speech -> speech.getActions().size())
-            .sum();
-        long actionsInScenesSAX = playSAX.getActs().stream()
-            .flatMap(act -> act.getSceneList().stream())
-            .mapToLong(scene -> scene.getActions().size())
-            .sum();
+    @ParameterizedTest
+    @MethodSource({"getParserDOM", "getParserSAX"})
+    public void testTagsCounter(PlayParser playParser) {
+        playParser.parse();
+        Map<String, Integer> tagsCounterMap = new HashMap<>();
+        tagsCounterMap.put("LINE", 4014);
+        tagsCounterMap.put("SPEAKER", 1150);
+        tagsCounterMap.put("SPEECH", 1138);
+        tagsCounterMap.put("STAGEDIR", 243);
+        tagsCounterMap.put("TITLE", 27);
+        tagsCounterMap.put("PERSONA", 26);
+        tagsCounterMap.put("SCENE", 20);
+        tagsCounterMap.put("ACT", 5);
+        tagsCounterMap.put("P", 4);
+        tagsCounterMap.put("GRPDESCR", 2);
+        tagsCounterMap.put("PGROUP", 2);
+        tagsCounterMap.put("FM", 1);
+        tagsCounterMap.put("PLAYSUBT", 1);
+        tagsCounterMap.put("PERSONAE", 1);
+        tagsCounterMap.put("PLAY", 1);
+        tagsCounterMap.put("SCNDESCR", 1);
 
-        assertEquals(243, actionsInScenesSAX + actionsInSpeechesSAX);
+        assertEquals(tagsCounterMap, playParser.getTagsCounter());
     }
 
-    @Test
-    public void compareTagsCounterDOMandSAX(){
-        assertEquals(playParserDOM.getTagsCounter(), playParserSAX.getTagsCounter());
+    @ParameterizedTest
+    @MethodSource({"getParserDOM", "getParserSAX"})
+    public void testExportToCsv(PlayParser parser) throws IOException {
+        parser.parse();
+        parser.exportToCSV(outputFile);
+
+        assertTrue(FileUtils.contentEqualsIgnoreEOL(testCSV, outputFile, "UTF-8"), "Files CSV differ");
     }
 
-    @Test
-    public void testExportToCsvSAX(){
-        playParserSAX.exportToCSV(outputFile);
-    }
-
-    @Test
-    public void testExportToCsvDOM(){
-        playParserDOM.exportToCSV(outputFile);
-    }
 }

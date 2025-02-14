@@ -1,5 +1,6 @@
 package com.rntgroup.custom_parser.dom;
 
+import com.rntgroup.custom_parser.PlayParser;
 import com.rntgroup.custom_parser.comparator.TagCounterComparator;
 import com.rntgroup.custom_parser.entity.Act;
 import com.rntgroup.custom_parser.entity.Person;
@@ -10,14 +11,11 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -28,6 +26,7 @@ import java.util.Map;
 import static com.rntgroup.custom_parser.constants.Constants.ACT;
 import static com.rntgroup.custom_parser.constants.Constants.AUTHOR;
 import static com.rntgroup.custom_parser.constants.Constants.EMPTY_STR;
+import static com.rntgroup.custom_parser.constants.Constants.FILE_NOT_FOUND;
 import static com.rntgroup.custom_parser.constants.Constants.GRPDESCR;
 import static com.rntgroup.custom_parser.constants.Constants.LINE;
 import static com.rntgroup.custom_parser.constants.Constants.P;
@@ -38,20 +37,24 @@ import static com.rntgroup.custom_parser.constants.Constants.SPEECH;
 import static com.rntgroup.custom_parser.constants.Constants.STAGEDIR;
 import static com.rntgroup.custom_parser.constants.Constants.TITLE;
 
-public class PlayParserDOM {
+public class PlayParserDOM implements PlayParser {
 
     private Play play;
     private final Document document;
     private final Map<String, Integer> tagCountMap = new HashMap<>();
     private boolean useTagsCounter = false;
 
-    public PlayParserDOM(File file) throws ParserConfigurationException, IOException, SAXException {
-
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        DocumentBuilder builder = factory.newDocumentBuilder();
-        this.document = builder.parse(file);
+    public PlayParserDOM(File file) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            this.document = builder.parse(file);
+        } catch (Exception exception) {
+            throw new RuntimeException(exception);
+        }
     }
 
+    @Override
     public Play parse() {
 
         String titlePlay = EMPTY_STR;
@@ -99,6 +102,7 @@ public class PlayParserDOM {
                 Map::putAll);
     }
 
+    @Override
     public void exportToCSV(File outputFile) {
         if (!useTagsCounter) {
             countTags(document.getDocumentElement());
@@ -110,7 +114,7 @@ public class PlayParserDOM {
                 .sorted(new TagCounterComparator())
                 .forEach(entry -> writer.println(entry.getKey() + "," + entry.getValue()));
         } catch (FileNotFoundException e) {
-            throw new IllegalArgumentException("File %s not found".formatted(outputFile));
+            throw new IllegalArgumentException(FILE_NOT_FOUND);
         }
     }
 

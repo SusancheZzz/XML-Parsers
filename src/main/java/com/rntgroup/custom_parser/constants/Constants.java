@@ -15,4 +15,5 @@ public class Constants {
     public static final String SPEAKER = "SPEAKER";
     public static final String LINE = "LINE";
     public static final String EMPTY_STR = "EMPTY_STR";
+    public static final String FILE_NOT_FOUND = "File not found";
 }

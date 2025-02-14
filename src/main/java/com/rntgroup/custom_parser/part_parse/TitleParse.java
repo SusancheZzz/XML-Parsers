@@ -11,15 +11,29 @@ public class TitleParse implements PartParsable{
 
 
     @Override
-    public void startParse(Attributes attributes, SaxParserFlags saxParserFlags, Play play) {
+    public void startParse(Attributes attributes, ParsingState parsingState, Play play) {
         if (Objects.nonNull(attributes.getValue(AUTHOR))) {
-            saxParserFlags.setTitlePlay(true);
+            parsingState.setTitlePlay(true);
             play.setAuthor(attributes.getValue(AUTHOR));
         }
     }
 
     @Override
-    public void endParse() {
-
+    public void endParse(ParsingState parsingState, Play play, String content) {
+        if (parsingState.isTitlePlay()) {
+            parsingState.setTitlePlay(false);
+            play.setTitle(content);
+        }
+        if (parsingState.isAct()) {
+            parsingState.setAct(false);
+            play.getActs().getLast()
+                .setTitle(content);
+        }
+        if (parsingState.isScene()) {
+            parsingState.setScene(false);
+            play.getActs().getLast()
+                .getSceneList().getLast()
+                .setTitle(content);
+        }
     }
 }
